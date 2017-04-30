@@ -8,6 +8,7 @@ import numpy as np
 from sklearn import model_selection
 from sklearn import ensemble
 from sklearn import metrics
+from scipy import stats
 
 from data_utils import tsio
 from data_utils import settings
@@ -140,7 +141,7 @@ def plain_transfer_person():
 
 	# Train model.
 	rf_clf = ensemble.RandomForestClassifier(n_estimators=10, 
-		criterion='entropy', max_features='sqrt')
+		criterion='entropy', max_features='sqrt', random_state=34)
 	rf_clf.fit(train_x, train_y)
 	print 'Fit model:', rf_clf.feature_importances_
 
@@ -193,25 +194,30 @@ def smart_transfer_person(read_disk, write_disk):
 
 	# Form small portion of target data for training.
 	tar_data_tr, tar_data_te = model_selection.train_test_split(
-		tar_data, test_size=0.9)
+		tar_data, test_size=0.8)
 
-	# Do the tpda thing.
-	adapted_clf, mapper = dom_adapt.tpda(tar_data_tr, source_data)
-	target_y = tar_data_te['label']
-	target_x = tar_data_te.drop('label', axis=1)
-	target_x = mapper.transform(target_x)
 	
-	# Test on target data.
-	preds = adapted_clf.predict(target_x)
-	print 'Predicted.'
+	# Do the tpda thing.
+	adapted_clfs, mappers = dom_adapt.tpda(tar_data_tr, source_data)
+	target_y = tar_data['label']
+	target_x = tar_data.drop('label', axis=1)
+	predictions = list()
+	for clf, mapper in zip(adapted_clfs, mappers):
+		target_x_ld = mapper.transform(target_x)
+		# Test on target data.
+		preds = clf.predict(target_x_ld)
+		predictions.append(preds.reshape(preds.shape[0],1))
+	predictions = np.concatenate(predictions, axis=1)
+	predictions = stats.mode(predictions, axis=1).mode
+
 
 	# Evaluate the results.
-	print metrics.classification_report(target_y, preds, 
+	print metrics.classification_report(target_y, predictions, 
 		labels=range(1,len(settings.act_li)+1,1), target_names=settings.act_li)
 
 if __name__ == '__main__':
-	# read_disk = True
-	# write_disk = False
-	# smart_transfer_person(read_disk, write_disk)
+	read_disk = True
+	write_disk = False
+	#smart_transfer_person(read_disk, write_disk)
 
 	plain_transfer_person()
