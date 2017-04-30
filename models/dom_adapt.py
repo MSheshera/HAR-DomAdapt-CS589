@@ -124,7 +124,7 @@ def tpda(tar_data_tr, source_data):
 
 	return clfs, mappers
 
-def modified_tpda(tar_data_tr, source_data, dim=15):
+def modified_tpda(tar_data_tr, source_data):
 	"""
 	Fits a modified tpda model.
 	"""
@@ -138,50 +138,61 @@ def modified_tpda(tar_data_tr, source_data, dim=15):
 	source_data = source_data.drop('label', axis=1)
 
 	# Using embedding size of 15 arbitrarily now.
-	isomapper = manifold.Isomap(n_neighbors=5, n_components=5, 
-		eigen_solver='auto', tol=0, max_iter=None, 
-		path_method='auto', neighbors_algorithm='auto', n_jobs=2)
-	# Compute embeddings for small target set.
-	isomapper.fit(tar_data_tr)
-	tar_data_tr_ld = isomapper.transform(tar_data_tr)
-	if DEBUG is True:
-		print('tpda: Computed low dim projection of target set. {} {}'.format(tar_data_tr_ld.shape, type(tar_data_tr_ld)))
-	
-	# Transform source data to lower dimension space learnt on target
-	# domain.
-	source_data_ld = isomapper.transform(source_data)
-	if DEBUG is True:
-		print('tpda: Mapped source domain to target set projection.'.format(source_data_ld.shape, type(source_data_ld)))
-
-	# Build selected dataset.
-	## Build data strcture to find neighbours in source data.
-	neigh = neighbors.NearestNeighbors(n_neighbors=20, 
-		metric='minkowski', p=2, metric_params=None, n_jobs=2)
-	neigh.fit(source_data_ld)
-
-	## For each sample in the target subset find k closest neighbours
-	## in the mapped source domain.
-
-	## Get indices for nn n_neighbors neighbours of all samples in 
-	## act_subset_tar.
-	neigh_indices = neigh.kneighbors(tar_data_tr_ld, return_distance=False)
-	## Flatten indices.
-	neigh_indices = neigh_indices.flatten(order='C')
-	## Index into source data.
-	selected = source_data_ld[neigh_indices, :]
-	## Append until-now-removed label to selected subset.
-	selected = pd.DataFrame(selected)
-	selected['label'] = source_data_labels.values[neigh_indices]
-	if DEBUG is True:
-		print('neigh_indices: {}'.format(neigh_indices.shape))
-		print('neigh_indices_flat: {}'.format(neigh_indices.shape))
-		print('selected: {}'.format(selected.shape))
-		print('\n')
+	mapper_data = tar_data_tr
+	clfs = list()
+	mappers = list()
+	for i in range(5):
+		isomapper = manifold.Isomap(n_neighbors=5, n_components=5, 
+			eigen_solver='auto', tol=0, max_iter=None, 
+			path_method='auto', neighbors_algorithm='auto', n_jobs=2)
+		# Compute embeddings for small target set.
+		isomapper.fit(mapper_data)
+		mappers.append(isomapper)
+		tar_data_tr_ld = isomapper.transform(tar_data_tr)
+		if DEBUG is True:
+			print('tpda: Computed low dim projection of target set. {} {}'.format(tar_data_tr_ld.shape, type(tar_data_tr_ld)))
 		
-	# Train a random forest classifier on selected source data.
-	rf_clf = ensemble.RandomForestClassifier(n_estimators=10, 
-		criterion='entropy', max_features='sqrt', random_state=34)
-	train_y = selected['label']
-	train_x = selected.drop('label', axis=1)
-	rf_clf.fit(train_x, train_y)
-	return rf_clf, isomapper
+		# Transform source data to lower dimension space learnt on target
+		# domain.
+		source_data_ld = isomapper.transform(source_data)
+		if DEBUG is True:
+			print('tpda: Mapped source domain to target set projection.'.format(source_data_ld.shape, type(source_data_ld)))
+
+		# Build selected dataset.
+		## Build data strcture to find neighbours in source data.
+		neigh = neighbors.NearestNeighbors(n_neighbors=10, 
+			metric='minkowski', p=2, metric_params=None, n_jobs=2)
+		neigh.fit(source_data_ld)
+
+		## For each sample in the target subset find k closest neighbours
+		## in the mapped source domain.
+
+		## Get indices for nn n_neighbors neighbours of all samples in 
+		## act_subset_tar.
+		neigh_indices = neigh.kneighbors(tar_data_tr_ld, return_distance=False)
+		## Flatten indices.
+		neigh_indices = neigh_indices.flatten(order='C')
+		## Index into source data.
+		selected_ld = source_data_ld[neigh_indices, :]
+		selected_fd = source_data.ix[neigh_indices]
+		## Form mapper data for next iteration
+		mapper_data = pd.concat([selected_fd, tar_data_tr], axis=0, 
+			ignore_index=True)
+		print("mapper_data: {}".format(mapper_data.shape))
+		## Append until-now-removed label to selected subset.
+		selected_ld = pd.DataFrame(selected_ld)
+		selected_ld['label'] = source_data_labels.values[neigh_indices]
+		if DEBUG is True:
+			print('neigh_indices_flat: {}'.format(neigh_indices.shape))
+			print('selected: {}'.format(selected_ld.shape))
+			print('\n')
+			
+		# Train a random forest classifier on selected source data.
+		rf_clf = ensemble.RandomForestClassifier(n_estimators=10, 
+			criterion='entropy', max_features='sqrt', random_state=34)
+		train_y = selected_ld['label']
+		train_x = selected_ld.drop('label', axis=1)
+		rf_clf.fit(train_x, train_y)
+		clfs.append(rf_clf)
+
+	return clfs, mappers

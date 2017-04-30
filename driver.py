@@ -198,7 +198,7 @@ def smart_transfer_person(read_disk, write_disk):
 
 	
 	# Do the tpda thing.
-	adapted_clfs, mappers = dom_adapt.tpda(tar_data_tr, source_data)
+	adapted_clfs, mappers = dom_adapt.modified_tpda(tar_data_tr, source_data)
 	target_y = tar_data['label']
 	target_x = tar_data.drop('label', axis=1)
 	predictions = list()
@@ -218,6 +218,6 @@ def smart_transfer_person(read_disk, write_disk):
 if __name__ == '__main__':
 	read_disk = True
 	write_disk = False
-	#smart_transfer_person(read_disk, write_disk)
+	smart_transfer_person(read_disk, write_disk)
 
-	plain_transfer_person()
+	#plain_transfer_person()
