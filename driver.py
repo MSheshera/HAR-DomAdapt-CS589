@@ -8,7 +8,6 @@ import numpy as np
 from sklearn import model_selection
 from sklearn import ensemble
 from sklearn import metrics
-from scipy import stats
 
 from data_utils import tsio
 from data_utils import settings
@@ -32,7 +31,8 @@ def get_user_asfeats(usr_str):
 
 	# Extract features from the data read in.
 	feat_user_data = fe.feat_extract(user_data, 
-		stat_feat_list=['mean', 'max', 'min', 'kurt', 'std', 'skew'])
+		stat_feat_list=['mean', 'max', 'min', 'kurt', 'std', 'skew'],
+		comp_feat_list=['pitch','roll','tilt'])
 	return feat_user_data
 
 # Learn on one person and test on the same person.
@@ -124,12 +124,12 @@ def plain_transfer_person():
 	test_users = test_users.drop('sen', axis=1)
 	test_users = test_users.drop('sen_pos', axis=1)
 
-	# Let the training see some of the target data.
-	test_subset, test_users = model_selection.train_test_split(
-		test_users, test_size=0.9)
-	train_users = pd.concat([train_users, test_subset], axis=0)
-	print 'Train data:', train_users.shape
-	sys.stdout.flush()
+	# # Let the training see some of the target data.
+	# test_subset, test_users = model_selection.train_test_split(
+	# 	test_users, test_size=0.9)
+	# train_users = pd.concat([train_users, test_subset], axis=0)
+	# print 'Train data:', train_users.shape
+	# sys.stdout.flush()
 
 	# Create test, train split.
 	train_y = train_users['label']
@@ -150,11 +150,12 @@ def plain_transfer_person():
 	print 'Predicted.'
 
 	# Evaluate the results.
+	print np.mean(preds==test_y)
 	print metrics.classification_report(test_y, preds, 
 		labels=range(1,len(settings.act_li)+1,1), target_names=settings.act_li)
 
 # Attempting some transfer learning.
-def smart_transfer_person(read_disk, write_disk):
+def smart_transfer_person(read_disk, write_disk, method='mtpda'):
 	# Read in source domain data either extracted or perform
 	# extraction.
 	if read_disk is True:
@@ -194,30 +195,33 @@ def smart_transfer_person(read_disk, write_disk):
 
 	# Form small portion of target data for training.
 	tar_data_tr, tar_data_te = model_selection.train_test_split(
-		tar_data, test_size=0.8)
-
+		tar_data, test_size=0.9, random_state=46)
+	target_y = tar_data_te['label']
+	target_x = tar_data_te.drop('label', axis=1)
 	
 	# Do the tpda thing.
-	adapted_clfs, mappers = dom_adapt.modified_tpda(tar_data_tr, source_data)
-	target_y = tar_data['label']
-	target_x = tar_data.drop('label', axis=1)
-	predictions = list()
-	for clf, mapper in zip(adapted_clfs, mappers):
-		target_x_ld = mapper.transform(target_x)
-		# Test on target data.
-		preds = clf.predict(target_x_ld)
-		predictions.append(preds.reshape(preds.shape[0],1))
-	predictions = np.concatenate(predictions, axis=1)
-	predictions = stats.mode(predictions, axis=1).mode
-
+	if method is 'tpda':
+		tpda = dom_adapt.TopologyPreservingDA(n_iter=5, isomap_comp=15, 
+			nn_neighbors=10, random_state=46, clf_str='rf', verbose=False)
+		tpda.fit(tar_data_tr, source_data)
+		predictions = tpda.predict(target_x)
+	elif method is 'mtpda':
+		# mtpda doesn't look at labels.
+		tar_data_tr = tar_data_tr.drop('label', axis=1)
+		tpda = dom_adapt.modTopologyPreservingDA(n_iter=1, isomap_comp=15, 
+			nn_neighbors=10, random_state=46, clf_str='rf', verbose=True)
+		tpda.fit(tar_data_tr, source_data)
+		predictions = tpda.predict(target_x)
 
 	# Evaluate the results.
-	print metrics.classification_report(target_y, predictions, 
-		labels=range(1,len(settings.act_li)+1,1), target_names=settings.act_li)
+	accuracy = np.mean(target_y == predictions.reshape((predictions.shape[0],)))
+	print('Accuracy: {:6f}'.format(accuracy))
+	print(metrics.classification_report(target_y, predictions, 
+			labels=range(1,len(settings.act_li)+1,1), target_names=settings.act_li))
 
 if __name__ == '__main__':
 	read_disk = True
 	write_disk = False
-	smart_transfer_person(read_disk, write_disk)
+	smart_transfer_person(read_disk, write_disk, method='tpda')
 
 	#plain_transfer_person()

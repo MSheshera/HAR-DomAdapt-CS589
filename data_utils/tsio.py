@@ -3,7 +3,8 @@ Code to read in the time series data from disk into pandas dataframes.
 This code doesn't work perfectly for every combination of sensor, 
 activity and position, this is mostly because of the data itself 
 not being perfectly consistent.
-This code cant read data for users 4, 7 and 14.
+This code cant read data for users 4,6,7 and 14; they seem to either have extra
+data or lesser data (I think in the case of 6)
 """
 import os, sys, pprint, re
 import collections
@@ -103,14 +104,9 @@ def read_zipped_data(fname, position, act_str, sen_str):
 	return readin_dict
 
 if __name__ == '__main__':
-	sensor = ['acc', 'mic', 'mag', 'lig', 'gyr', 'gps']
-	position = ['chest', 'forearm', 'head', 'shin', 'thigh', 'upperarm', 
-	'waist']
-	root_path = '/mnt/6EE804CEE804970D/Academics/Projects/589-Project/Datasets/realworld2016_dataset'
-	
 	if DEBUG is True:
 		print('\n\n\n')
-		readin = read_data(root_path, user=['1'], sensor=['acc','mic'], position=['thigh'])
+		readin = read_data(settings.data_path, user=['1'], sensor=['acc','mic'], position=['thigh'])
 		for user in readin.keys():
 			for sen in readin[user].keys():
 				for act in readin[user][sen].keys():

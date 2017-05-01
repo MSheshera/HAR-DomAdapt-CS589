@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import settings
 
-def struct_data(data_dict):
+def struct_data(data_dict, resample=True, method='mean'):
 	"""
 	Given the data dictionary return a gigantic dataframe with all the data
 	put together and sorted by timestamp.
