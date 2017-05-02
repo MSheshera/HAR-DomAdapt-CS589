@@ -3,6 +3,7 @@ Code to read in the time series data from disk into pandas dataframes.
 This code doesn't work perfectly for every combination of sensor, 
 activity and position, this is mostly because of the data itself 
 not being perfectly consistent.
+
 This code cant read data for users 4,6,7 and 14; they seem to either have extra
 data or lesser data (I think in the case of 6)
 """

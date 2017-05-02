@@ -1,5 +1,6 @@
 """
-Calls code from everywhere else and gets things done.
+Calls code from everywhere else and gets things done. Runs all our transfer
+learning experiments.
 """
 import os, sys, pickle
 import pandas as pd
@@ -269,7 +270,3 @@ if __name__ == '__main__':
 	smart_transfer_person(method='mtpda', group='diff'); print('\n')
 	smart_transfer_person(method='tpda', group='diff'); print('\n')
 	plain_transfer_person(allow_peeking=True, group='diff'); print('\n')
-	
-	
-	
-	
