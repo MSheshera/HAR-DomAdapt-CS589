@@ -97,4 +97,4 @@ def ret_first(array_like):
 	"""
 	Method for sampling the label information.
 	"""
-	return array_like.ix[0]	
+	return array_like.ix[0]
