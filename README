@@ -1,0 +1,11 @@
+Description of directories and files:
+    data: Extracted features stored as pandas dataframes serialized to 
+        pickle files.
+    data_utils/feature_extract.py: Windowing and extraction of features.
+    data_utils/transform.py: Utilities to read and structure data into 
+        structure suitable dataframes.
+    data_utils/tsio.py: Read data from complex directory structure of
+        dataset and return it as python dictionary.
+    data_utils/settings.py: Global settings used across whole project.
+    models/dom_adapt.py: Impliments the TPDA transfer learning approach.
+    driver.py: Runs all experiments performed and prints results to STDOUT.
