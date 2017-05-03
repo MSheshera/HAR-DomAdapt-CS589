@@ -3,6 +3,5 @@
 
 # Except
 !.gitignore
-!README
-!*.py
+!README.md
 !*.py
